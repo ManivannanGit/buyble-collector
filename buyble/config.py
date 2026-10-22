@@ -27,6 +27,7 @@ ENV_KEYS = {*SECRET_KEYS, "EXTRACT_MODEL", "REDDIT_USER_AGENT", "MAX_LLM_CALLS_P
             "MAX_POSTS_PER_ITEM", "DEFAULT_CITY"}
 # Values copied unchanged from .env.example count as missing.
 PLACEHOLDERS = {"postgresql://...", "linux:buyble-collector:0.1 (by /u/YOUR_USERNAME)"}
+PASSWORD_PLACEHOLDER = "YOUR-PASSWORD"
 
 
 class ConfigError(ValueError):
@@ -79,7 +80,9 @@ def _clean(value: str | None) -> str | None:
     if value is None:
         return None
     value = value.strip()
-    return None if not value or value in PLACEHOLDERS else value
+    if not value or value in PLACEHOLDERS or PASSWORD_PLACEHOLDER in value or "[YOUR-PASSWORD]" in value:
+        return None
+    return value
 
 
 def _int(raw: dict, key: str, default: int) -> int:
@@ -228,7 +231,34 @@ def load_catalog(path: Path | None = None) -> Catalog:
         return parse_catalog(yaml.safe_load(f))
 
 
+def set_db_password(path: Path | None = None) -> None:
+    """Prompt (hidden) for the database password and write it into DATABASE_URL in .env."""
+    import getpass
+    from urllib.parse import quote
+
+    path = path or env_path()
+    lines = path.read_text().splitlines(keepends=True)
+    idx = next((i for i, l in enumerate(lines) if l.startswith("DATABASE_URL=")), None)
+    if idx is None or PASSWORD_PLACEHOLDER not in lines[idx]:
+        raise ConfigError(f"DATABASE_URL in {path} has no {PASSWORD_PLACEHOLDER} placeholder to fill")
+    password = getpass.getpass("Supabase database password (hidden): ")
+    if not password:
+        raise ConfigError("no password entered")
+    lines[idx] = lines[idx].replace(PASSWORD_PLACEHOLDER, quote(password, safe=""), 1)
+    path.write_text("".join(lines))
+    path.chmod(0o600)
+    print("DATABASE_URL: set")
+
+
 if __name__ == "__main__":
+    import sys
+
+    if "--set-db-password" in sys.argv:
+        try:
+            set_db_password()
+        except ConfigError as e:
+            sys.exit(f"error: {e}")
+        sys.exit(0)
     s = load_settings()
     c = load_catalog()
     print(f".env: {env_path()}")
