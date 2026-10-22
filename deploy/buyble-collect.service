@@ -1,0 +1,14 @@
+[Unit]
+Description=Buyble data collection run
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=buyble
+WorkingDirectory=/opt/buyble-collector
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/usr/bin/git -C /opt/buyble-collector pull --ff-only
+ExecStart=/opt/buyble-collector/.venv/bin/python -m buyble.run
+TimeoutStartSec=3600
+Nice=10
