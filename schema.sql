@@ -72,3 +72,11 @@ create table if not exists runs (
 );
 alter table runs add column if not exists kind text default 'collect';   -- 'collect' | 'golden'
 alter table runs add column if not exists golden_accuracy numeric;
+
+-- Supabase exposes public tables over its REST API; with RLS on and no policies,
+-- only the owner role (which the collector uses) can read or write.
+alter table raw_posts enable row level security;
+alter table points    enable row level security;
+alter table attr_maps enable row level security;
+alter table golden    enable row level security;
+alter table runs      enable row level security;
