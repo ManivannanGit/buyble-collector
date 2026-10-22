@@ -187,7 +187,10 @@ class Extractor:
     def __post_init__(self):
         if self.client is None:
             self.settings.require("ANTHROPIC_API_KEY")
-            self.client = anthropic.Anthropic(api_key=self.settings.anthropic_api_key, max_retries=4)
+            headers = ({"anthropic-workspace-id": self.settings.anthropic_workspace_id}
+                       if self.settings.anthropic_workspace_id else None)
+            self.client = anthropic.Anthropic(api_key=self.settings.anthropic_api_key, max_retries=4,
+                                              default_headers=headers)
         self._system = system_prompt(self.catalog)
         self._schema = output_schema(self.catalog)
 
@@ -242,8 +245,8 @@ class Extractor:
             return None
         except anthropic.APIStatusError as e:
             self.errors.append(f"extract: HTTP {e.status_code}")
-            log.error("extraction call rejected (HTTP %s, request %s)", e.status_code,
-                      getattr(e, "request_id", None))
+            log.error("extraction call rejected (HTTP %s, request %s): %s", e.status_code,
+                      getattr(e, "request_id", None), getattr(e, "message", ""))
             return None
         self._bill(getattr(response, "usage", None))
         if response.stop_reason in ("refusal", "max_tokens"):

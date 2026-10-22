@@ -24,7 +24,7 @@ SECRET_KEYS = (
     "AUTHOR_HASH_SALT",
 )
 ENV_KEYS = {*SECRET_KEYS, "EXTRACT_MODEL", "REDDIT_USER_AGENT", "MAX_LLM_CALLS_PER_RUN",
-            "MAX_POSTS_PER_ITEM", "DEFAULT_CITY", "MAX_LLM_USD_PER_RUN"}
+            "MAX_POSTS_PER_ITEM", "DEFAULT_CITY", "MAX_LLM_USD_PER_RUN", "ANTHROPIC_WORKSPACE_ID"}
 # Values copied unchanged from .env.example count as missing.
 PLACEHOLDERS = {"postgresql://...", "linux:buyble-collector:0.1 (by /u/YOUR_USERNAME)"}
 PASSWORD_PLACEHOLDER = "YOUR-PASSWORD"
@@ -50,6 +50,7 @@ class Settings:
     max_posts_per_item: int
     default_city: str
     max_llm_usd_per_run: float = 0.10
+    anthropic_workspace_id: str | None = None
 
     def status(self) -> dict[str, str]:
         """Map each variable to 'set' or 'missing'. Safe to print."""
@@ -133,6 +134,7 @@ def load_settings(path: Path | None = None) -> Settings:
         max_posts_per_item=_int(raw, "MAX_POSTS_PER_ITEM", 40),
         default_city=get("DEFAULT_CITY") or "Bengaluru",
         max_llm_usd_per_run=_float(raw, "MAX_LLM_USD_PER_RUN", 0.10),
+        anthropic_workspace_id=get("ANTHROPIC_WORKSPACE_ID"),
     )
 
 
