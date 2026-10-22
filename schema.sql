@@ -80,3 +80,4 @@ alter table points    enable row level security;
 alter table attr_maps enable row level security;
 alter table golden    enable row level security;
 alter table runs      enable row level security;
+alter table runs add column if not exists llm_cost_usd numeric;

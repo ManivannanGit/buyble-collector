@@ -143,11 +143,11 @@ def start_run(conn: psycopg.Connection, kind: str = "collect") -> int:
 
 
 def finish_run(conn: psycopg.Connection, run_id: int, *, posts_fetched=0, llm_calls=0, points_staged=0,
-               errors=(), golden_accuracy=None) -> None:
+               errors=(), golden_accuracy=None, llm_cost_usd=None) -> None:
     conn.execute(
         """update runs set finished_at = now(), posts_fetched = %s, llm_calls = %s, points_staged = %s,
-           errors = %s, golden_accuracy = %s where id = %s""",
-        (posts_fetched, llm_calls, points_staged, Jsonb(list(errors)), golden_accuracy, run_id),
+           errors = %s, golden_accuracy = %s, llm_cost_usd = %s where id = %s""",
+        (posts_fetched, llm_calls, points_staged, Jsonb(list(errors)), golden_accuracy, llm_cost_usd, run_id),
     )
     conn.commit()
 

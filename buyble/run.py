@@ -83,7 +83,7 @@ def print_points(points: list[dict]) -> None:
 def run(settings: Settings, catalog: Catalog, *, item_keys: list[str], dry_run: bool, max_llm: int,
         show: int = 5) -> dict:
     today = datetime.now(timezone.utc).date()
-    stats = {"posts_fetched": 0, "llm_calls": 0, "points_staged": 0, "points_rejected": 0, "errors": []}
+    stats = {"posts_fetched": 0, "llm_calls": 0, "llm_cost_usd": 0.0, "points_staged": 0, "points_rejected": 0, "errors": []}
     with ExitStack() as stack:
         conn = stack.enter_context(db.connect(settings.database_url)) if settings.database_url else None
         run_id = db.start_run(conn) if conn and not dry_run else None
@@ -126,9 +126,11 @@ def _run(settings, catalog, conn, run_id, stats, *, item_keys, dry_run, max_llm,
             log.error(msg)
             stats["errors"].append(msg)
         else:
-            extractor = Extractor(settings, catalog, max_calls=max_llm)
+            extractor = Extractor(settings, catalog, max_calls=max_llm, max_usd=settings.max_llm_usd_per_run)
             extracted, done_ids = extractor.extract(pending, today)
             stats["llm_calls"] = extractor.calls
+            stats["llm_cost_usd"] = round(extractor.cost_usd, 4)
+            stats["llm_tokens"] = (extractor.tokens_in, extractor.tokens_out)
             stats["errors"].extend(extractor.errors)
 
             # 4. normalise -> validate -> score -> points
@@ -162,7 +164,8 @@ def _run(settings, catalog, conn, run_id, stats, *, item_keys, dry_run, max_llm,
             try:
                 conn.rollback()          # no-op unless something failed mid-transaction
                 db.finish_run(conn, run_id, posts_fetched=stats["posts_fetched"], llm_calls=stats["llm_calls"],
-                              points_staged=stats["points_staged"], errors=stats["errors"])
+                              points_staged=stats["points_staged"], errors=stats["errors"],
+                              llm_cost_usd=stats["llm_cost_usd"])
             except Exception:
                 log.exception("could not record the run summary")
 
@@ -171,6 +174,9 @@ def print_summary(stats: dict, dry_run: bool) -> None:
     print("\n=== Buyble run summary" + (" (dry run, nothing written)" if dry_run else f" #{stats['run_id']}") + " ===")
     print(f"  snippets fetched : {stats['posts_fetched']}")
     print(f"  LLM calls        : {stats['llm_calls']}")
+    tin, tout = stats.get("llm_tokens", (0, 0))
+    print(f"  LLM cost (est.)  : ${stats['llm_cost_usd']:.4f} (~₹{stats['llm_cost_usd'] * 88:.2f}); "
+          f"{tin} in / {tout} out tokens")
     print(f"  points staged    : {stats['points_staged']}")
     print(f"  points rejected  : {stats['points_rejected']}")
     if "bodies_purged" in stats:

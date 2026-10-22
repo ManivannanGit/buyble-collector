@@ -24,7 +24,7 @@ SECRET_KEYS = (
     "AUTHOR_HASH_SALT",
 )
 ENV_KEYS = {*SECRET_KEYS, "EXTRACT_MODEL", "REDDIT_USER_AGENT", "MAX_LLM_CALLS_PER_RUN",
-            "MAX_POSTS_PER_ITEM", "DEFAULT_CITY"}
+            "MAX_POSTS_PER_ITEM", "DEFAULT_CITY", "MAX_LLM_USD_PER_RUN"}
 # Values copied unchanged from .env.example count as missing.
 PLACEHOLDERS = {"postgresql://...", "linux:buyble-collector:0.1 (by /u/YOUR_USERNAME)"}
 PASSWORD_PLACEHOLDER = "YOUR-PASSWORD"
@@ -49,6 +49,7 @@ class Settings:
     max_llm_calls_per_run: int
     max_posts_per_item: int
     default_city: str
+    max_llm_usd_per_run: float = 0.10
 
     def status(self) -> dict[str, str]:
         """Map each variable to 'set' or 'missing'. Safe to print."""
@@ -98,6 +99,19 @@ def _int(raw: dict, key: str, default: int) -> int:
     return n
 
 
+def _float(raw: dict, key: str, default: float) -> float:
+    value = _clean(raw.get(key))
+    if value is None:
+        return default
+    try:
+        n = float(value)
+    except ValueError:
+        raise ConfigError(f"{key} must be a number") from None
+    if n <= 0:
+        raise ConfigError(f"{key} must be positive")
+    return n
+
+
 def load_settings(path: Path | None = None) -> Settings:
     path = path or env_path()
     raw = dotenv_values(path) if path.exists() else {}
@@ -118,6 +132,7 @@ def load_settings(path: Path | None = None) -> Settings:
         max_llm_calls_per_run=_int(raw, "MAX_LLM_CALLS_PER_RUN", 400),
         max_posts_per_item=_int(raw, "MAX_POSTS_PER_ITEM", 40),
         default_city=get("DEFAULT_CITY") or "Bengaluru",
+        max_llm_usd_per_run=_float(raw, "MAX_LLM_USD_PER_RUN", 0.10),
     )
 
 

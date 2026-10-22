@@ -19,6 +19,9 @@ from .normalise import scrub_pii, trim
 log = logging.getLogger(__name__)
 
 BATCH_SIZE = 8
+EFFORT = "low"      # cheapest; raise to "medium" only if extraction quality is poor
+# USD per million tokens (input, output). Cache writes bill 1.25x input, cache reads 0.1x.
+PRICES = {"claude-haiku-5-5": (0.10, 0.50), "claude-haiku-4-5": (1.00, 5.00), "claude-sonnet-5-5": (2.00, 10.00)}
 KINDS = ["purchase", "asked", "component"]
 LINE_KINDS = ["part", "labour", "service_package", "food", "product"]
 ATTR_SOURCES = ["seller_stated", "buyer_stated", "inferred"]
@@ -173,8 +176,12 @@ class Extractor:
     settings: Settings
     catalog: Catalog
     max_calls: int
+    max_usd: float = 0.10
     client: anthropic.Anthropic | None = None
     calls: int = 0
+    cost_usd: float = 0.0
+    tokens_in: int = 0
+    tokens_out: int = 0
     errors: list[str] = field(default_factory=list)
 
     def __post_init__(self):
@@ -186,14 +193,28 @@ class Extractor:
 
     @property
     def exhausted(self) -> bool:
-        return self.calls >= self.max_calls
+        return self.calls >= self.max_calls or self.cost_usd >= self.max_usd
+
+    def _bill(self, usage) -> None:
+        if usage is None:
+            return
+        price_in, price_out = PRICES.get(self.settings.extract_model, PRICES["claude-haiku-5-5"])
+        fresh = getattr(usage, "input_tokens", 0) or 0
+        written = getattr(usage, "cache_creation_input_tokens", 0) or 0
+        read = getattr(usage, "cache_read_input_tokens", 0) or 0
+        out = getattr(usage, "output_tokens", 0) or 0
+        self.tokens_in += fresh + written + read
+        self.tokens_out += out
+        self.cost_usd += (fresh * price_in + written * price_in * 1.25 + read * price_in * 0.1
+                          + out * price_out) / 1_000_000
 
     def extract(self, snippets: list[dict], today: date) -> tuple[list[dict], list[str]]:
         """Return (points, ids_done). Snippets past the LLM cap stay undone for the next run."""
         points, done = [], []
         for start in range(0, len(snippets), BATCH_SIZE):
             if self.exhausted:
-                log.info("LLM call cap (%d) reached; leaving the rest for the next run", self.max_calls)
+                log.info("LLM cap reached (%d calls / $%.3f); leaving the rest for the next run",
+                         self.calls, self.cost_usd)
                 break
             batch = snippets[start:start + BATCH_SIZE]
             got = self._call(batch, today)
@@ -211,7 +232,7 @@ class Extractor:
                 max_tokens=16000,
                 system=[{"type": "text", "text": self._system, "cache_control": {"type": "ephemeral"}}],
                 messages=[{"role": "user", "content": user_message(batch, today)}],
-                output_config={"effort": "medium", "format": {"type": "json_schema", "schema": self._schema}},
+                output_config={"effort": EFFORT, "format": {"type": "json_schema", "schema": self._schema}},
             )
         except anthropic.AuthenticationError:
             raise
@@ -224,6 +245,7 @@ class Extractor:
             log.error("extraction call rejected (HTTP %s, request %s)", e.status_code,
                       getattr(e, "request_id", None))
             return None
+        self._bill(getattr(response, "usage", None))
         if response.stop_reason in ("refusal", "max_tokens"):
             # Mark these done so a bad batch can't burn the budget every night.
             self.errors.append(f"extract: stop_reason={response.stop_reason}")

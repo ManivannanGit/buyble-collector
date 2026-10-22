@@ -51,7 +51,7 @@ def test_settings_placeholders_are_missing(tmp_path, monkeypatch):
     s = load_settings(env)
     assert s.database_url is None
     assert s.reddit_user_agent is None
-    assert s.max_llm_calls_per_run == 400
+    assert s.max_llm_calls_per_run == 100 and s.max_llm_usd_per_run == 0.10
     assert s.extract_model == "claude-haiku-5-5"
     assert set(s.status().values()) == {"missing"}
     with pytest.raises(ConfigError, match="DATABASE_URL"):

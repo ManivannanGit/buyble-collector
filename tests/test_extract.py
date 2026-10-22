@@ -87,3 +87,19 @@ def test_build_point_end_to_end():
     assert pt["price_per_unit"] == 280 and pt["unit_basis"] == "pc"
     assert pt["purchased_at"] == date(2026, 9, 1)
     assert 0.7 < pt["trust"] < 0.8
+
+
+def test_dollar_cap_stops_extraction():
+    class Billed(FakeClient):
+        def create(self, **kw):
+            r = super().create(**kw)
+            r.usage = SimpleNamespace(input_tokens=200_000, output_tokens=100_000,
+                                      cache_creation_input_tokens=0, cache_read_input_tokens=0)
+            return r
+
+    client = Billed([("end_turn", {"points": []})] * 5)
+    ex = Extractor(SETTINGS, CAT, max_calls=50, max_usd=0.10, client=client)
+    ex.extract(snippets(40), TODAY)
+    assert ex.calls == 2                          # $0.07 per call: second call crosses $0.10, then stop
+    assert abs(ex.cost_usd - 0.14) < 1e-9
+    assert client.calls[0]["output_config"]["effort"] == "low"
