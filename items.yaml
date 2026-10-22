@@ -1,0 +1,130 @@
+city: Bengaluru
+nearby_cities: [Chennai, Hyderabad, Mumbai, Pune, Delhi]   # data from these is kept but weighted lower
+
+categories:
+  food_drink:
+    channels: [dine_in, takeaway, delivery_app]
+  apparel:
+    channels: [online, brand_store, local_shop]
+  auto_parts:
+    channels: [authorised, garage, online]
+  service:
+    channels: [authorised, garage, app]
+
+# bounds: [min, max] INR for one unit; points outside are rejected (CLAUDE.md section 8)
+items:
+  hot-chocolate:
+    category: food_drink
+    canonical: hot chocolate
+    queries: ["hot chocolate price", "hot chocolate cafe", "best hot chocolate"]
+    attrs:
+      fat_source: [cocoa_butter, vegetable_fat]
+      base: [real_chocolate, cocoa_powder, premix]
+    bounds: [30, 1500]
+  filter-coffee:
+    category: food_drink
+    canonical: filter coffee
+    queries: ["filter coffee price", "filter coffee rs"]
+    attrs: { chicory: [pure_coffee, with_chicory] }
+    bounds: [10, 500]
+  cold-coffee:
+    category: food_drink
+    canonical: cold coffee
+    queries: ["cold coffee price"]
+    attrs: { base: [espresso, instant, premix] }
+    bounds: [30, 800]
+  masala-chai:
+    category: food_drink
+    canonical: masala chai
+    queries: ["chai price", "masala chai rs"]
+    attrs: { milk: [full_cream, toned, plant] }
+    bounds: [5, 500]
+
+  round-neck-tshirt:
+    category: apparel
+    canonical: t-shirt
+    queries: ["t shirt quality price", "best t shirt brand india", "tshirt gsm"]
+    attrs:
+      fibre: [cotton_100, cotton_poly_blend, polyester, rayon_viscose]
+      weight: [light_under_160gsm, mid_160_200gsm, heavy_over_200gsm]
+    bounds: [100, 10000]
+  polo-tshirt:
+    category: apparel
+    canonical: polo t-shirt
+    queries: ["polo t shirt price india"]
+    attrs: { fibre: [cotton_100, cotton_poly_blend, polyester] }
+    bounds: [150, 12000]
+  gym-tshirt:
+    category: apparel
+    canonical: gym t-shirt
+    queries: ["dri fit t shirt price", "gym tshirt technosport", "sports tshirt quality"]
+    attrs: { fibre: [polyester, poly_spandex, cotton_blend] }
+    bounds: [100, 8000]
+
+  spark-plug:
+    category: auto_parts
+    canonical: spark plug
+    queries: ["spark plug price scooter", "spark plug jupiter", "spark plug activa"]
+    attrs: { origin: [genuine_oem, branded_aftermarket, local_unbranded] }
+    models: [TVS Jupiter, Honda Activa, Suzuki Access, TVS Ntorq]
+    bounds: [50, 2000]
+  air-filter:
+    category: auto_parts
+    canonical: air filter
+    queries: ["air filter price scooter", "air filter change cost"]
+    attrs: { origin: [genuine_oem, branded_aftermarket, local_unbranded] }
+    models: [TVS Jupiter, Honda Activa, Suzuki Access]
+    bounds: [80, 2500]
+  brake-shoes:
+    category: auto_parts
+    canonical: brake shoes
+    queries: ["brake shoe price scooter", "brake shoes replacement cost"]
+    attrs: { origin: [genuine_oem, branded_aftermarket, local_unbranded] }
+    models: [TVS Jupiter, Honda Activa, Suzuki Access]
+    bounds: [150, 4000]
+  clutch-assembly:
+    category: auto_parts
+    canonical: clutch assembly
+    queries: ["scooter clutch replacement cost", "clutch assembly price jupiter"]
+    attrs: { origin: [genuine_oem, branded_aftermarket, local_unbranded] }
+    bounds: [500, 12000]
+  accelerator-cable:
+    category: auto_parts
+    canonical: accelerator cable
+    queries: ["accelerator cable price scooter"]
+    attrs: { origin: [genuine_oem, branded_aftermarket, local_unbranded] }
+    bounds: [80, 2000]
+  scooter-general-service:
+    category: service
+    canonical: scooter general service
+    queries: ["scooter service cost", "jupiter service cost", "activa service charges"]
+    attrs: { scope: [labour_only, labour_plus_oil, full_package] }
+    bounds: [150, 8000]
+  fork-oil-service:
+    category: service
+    canonical: front fork service
+    queries: ["fork oil change cost scooter", "front fork repair cost"]
+    attrs: { scope: [oil_only, seals_and_oil, alignment_and_oil] }
+    bounds: [150, 6000]
+
+  airport-cab:
+    category: service
+    canonical: airport cab
+    queries: ["airport cab fare bangalore", "kia airport taxi price", "uber airport fare"]
+    attrs:
+      vehicle: [hatchback, sedan, suv]
+      booking: [app, prepaid_counter, street]
+    bounds: [200, 5000]
+  city-cab-10km:
+    category: service
+    canonical: city cab ride
+    queries: ["cab fare per km bangalore", "ola uber fare 10 km"]
+    attrs: { vehicle: [auto, hatchback, sedan], booking: [app, street] }
+    bounds: [30, 3000]
+
+subreddits:                      # verify each exists and is active before use; drop dead ones
+  general: [bangalore, india, chennai, hyderabad, mumbai, pune, delhi]
+  food_drink: [IndianFood, bangalore]
+  apparel: [IndianFashionAddicts, IndianMenFashion]
+  auto_parts: [IndianBikes, indianbikes]
+  service: [bangalore, IndianBikes]
