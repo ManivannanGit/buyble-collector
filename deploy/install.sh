@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Idempotent setup of the Buyble collector on this EC2 box (Amazon Linux 2023 or Ubuntu).
-#   sudo bash install.sh git@github.com:OWNER/buyble-collector.git
+#   sudo bash install.sh https://github.com/OWNER/buyble-collector.git   # public repo
+#   sudo bash install.sh git@github.com:OWNER/buyble-collector.git       # private repo (uses a deploy key)
 # Safe to re-run: it pulls the latest code, refreshes the venv and units, and never touches a filled-in .env.
 set -euo pipefail
 
@@ -26,12 +27,15 @@ echo "== user"
 id "$APP_USER" >/dev/null 2>&1 || useradd --system --create-home --shell /sbin/nologin "$APP_USER"
 APP_HOME=$(getent passwd "$APP_USER" | cut -d: -f6)
 
-echo "== deploy key (read-only GitHub access for the nightly git pull)"
-install -d -m 700 -o "$APP_USER" -g "$APP_USER" "$APP_HOME/.ssh"
-if [[ ! -f "$APP_HOME/.ssh/id_ed25519" ]]; then
-  sudo -u "$APP_USER" ssh-keygen -q -t ed25519 -N "" -C "buyble-collector@$(hostname)" -f "$APP_HOME/.ssh/id_ed25519"
+if [[ "$REPO_URL" == git@* ]]; then
+  echo "== deploy key (read-only GitHub access for the nightly git pull of a private repo)"
+  install -d -m 700 -o "$APP_USER" -g "$APP_USER" "$APP_HOME/.ssh"
+  if [[ ! -f "$APP_HOME/.ssh/id_ed25519" ]]; then
+    sudo -u "$APP_USER" ssh-keygen -q -t ed25519 -N "" -C "buyble-collector@$(hostname)" -f "$APP_HOME/.ssh/id_ed25519"
+  fi
+  sudo -u "$APP_USER" sh -c "touch ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts && \
+    (ssh-keygen -F github.com >/dev/null || ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null)"
 fi
-sudo -u "$APP_USER" sh -c "ssh-keygen -F github.com >/dev/null || ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null"
 
 echo "== code"
 if [[ -d "$APP_DIR/.git" ]]; then

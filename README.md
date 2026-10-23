@@ -42,8 +42,8 @@ To fill the Supabase password without typing it anywhere visible, leave `YOUR-PA
 
 1. Push this repo to a **private** GitHub repo.
 2. SSH in: `ssh -i <your-key>.pem ec2-user@<your-ec2-public-dns>`
-3. Copy `deploy/install.sh` over (or `curl` it from GitHub), then run `sudo bash install.sh git@github.com:OWNER/REPO.git`.
-   The first time, it prints a **deploy key**. Add it in GitHub → repo → Settings → Deploy keys (read-only), then re-run the same command.
+3. Copy `deploy/install.sh` over (or `curl` it from GitHub), then run `sudo bash install.sh https://github.com/OWNER/REPO.git` (public repo) or `…git@github.com:OWNER/REPO.git` (private).
+   For a private repo, the first run prints a **deploy key**. Add it in GitHub → repo → Settings → Deploy keys (read-only), then re-run the same command.
 4. Fill in secrets on the box: `sudo -u buyble nano /opt/buyble-collector/.env`
 5. Test: `sudo systemctl start buyble-collect && journalctl -u buyble-collect -n 100 --no-pager`
 
