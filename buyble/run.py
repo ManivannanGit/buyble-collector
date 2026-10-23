@@ -211,7 +211,8 @@ def main(argv: list[str] | None = None) -> int:
     max_llm = args.max_llm or settings.max_llm_calls_per_run
     stats = run(settings, catalog, item_keys=keys, dry_run=args.dry_run, max_llm=max_llm, show=args.show)
     print_summary(stats, args.dry_run)
-    return 1 if stats["errors"] and not stats["posts_fetched"] else 0
+    # Skipped sources are reported in the summary and the runs table; only crashes exit non-zero.
+    return 0
 
 
 if __name__ == "__main__":
